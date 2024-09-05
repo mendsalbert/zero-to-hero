@@ -470,19 +470,10 @@ export async function redeemReward(userId: number, rewardId: number) {
 }
 
 export async function getUserBalance(userId: number): Promise<number> {
-  try {
-    const transactions = await db.select().from(Transactions).where(eq(Transactions.userId, userId)).execute();
-
-    const balance = transactions.reduce((acc, transaction) => {
-      return transaction.type.startsWith('earned') 
-        ? acc + transaction.amount 
-        : acc - transaction.amount;
-    }, 0);
-
-    return balance;
-  } catch (error) {
-    console.error('Error fetching user balance:', error);
-    throw error;
-  }
+  const transactions = await getRewardTransactions(userId);
+  const balance = transactions.reduce((acc, transaction) => {
+    return transaction.type.startsWith('earned') ? acc + transaction.amount : acc - transaction.amount
+  }, 0);
+  return Math.max(balance, 0); // Ensure balance is never negative
 }
 

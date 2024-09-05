@@ -113,12 +113,23 @@ export default function Header({ onMenuClick, totalEarnings }: HeaderProps) {
         const user = await getUserByEmail(userInfo.email);
         if (user) {
           const userBalance = await getUserBalance(user.id);
-          setBalance(Math.max(userBalance, 0)); // Ensure balance is never negative
+          setBalance(userBalance);
         }
       }
     };
 
     fetchUserBalance();
+
+    // Add an event listener for balance updates
+    const handleBalanceUpdate = (event: CustomEvent) => {
+      setBalance(event.detail);
+    };
+
+    window.addEventListener('balanceUpdated', handleBalanceUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('balanceUpdated', handleBalanceUpdate as EventListener);
+    };
   }, [userInfo]);
 
   const login = async () => {

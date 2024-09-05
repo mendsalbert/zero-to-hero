@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Coins, ArrowUpRight, ArrowDownRight, Gift, AlertCircle, Loader } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getUserByEmail, getRewardTransactions, getAvailableRewards, redeemReward, createTransaction } from '@/utils/db/actions'
@@ -27,7 +27,6 @@ export default function RewardsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [rewards, setRewards] = useState<Reward[]>([])
   const [loading, setLoading] = useState(true)
-  const [isRedeeming, setIsRedeeming] = useState(false)
 
   useEffect(() => {
     const fetchUserDataAndRewards = async () => {
@@ -39,7 +38,7 @@ export default function RewardsPage() {
           if (fetchedUser) {
             setUser(fetchedUser)
             const fetchedTransactions = await getRewardTransactions(fetchedUser.id)
-            setTransactions(fetchedTransactions.filter(t => t.amount !== 0) as Transaction[])
+            setTransactions(fetchedTransactions as Transaction[])
             const fetchedRewards = await getAvailableRewards(fetchedUser.id)
             setRewards(fetchedRewards.filter(r => r.cost > 0)) // Filter out rewards with 0 points
             const calculatedBalance = fetchedTransactions.reduce((acc, transaction) => {
@@ -63,24 +62,6 @@ export default function RewardsPage() {
     fetchUserDataAndRewards()
   }, [])
 
-  const refreshUserData = useCallback(async () => {
-    if (user) {
-      const fetchedUser = await getUserByEmail(user.email);
-      if (fetchedUser) {
-        const fetchedTransactions = await getRewardTransactions(fetchedUser.id);
-        setTransactions(fetchedTransactions.filter(t => t.amount !== 0) as Transaction[]);
-        const fetchedRewards = await getAvailableRewards(fetchedUser.id);
-        setRewards(fetchedRewards.filter(r => r.cost > 0));
-        
-        // Recalculate balance
-        const calculatedBalance = fetchedTransactions.reduce((acc, transaction) => {
-          return transaction.type.startsWith('earned') ? acc + transaction.amount : acc - transaction.amount
-        }, 0)
-        setBalance(Math.max(calculatedBalance, 0))
-      }
-    }
-  }, [user])
-
   const handleRedeemReward = async (rewardId: number) => {
     if (!user) {
       toast.error('Please log in to redeem rewards.')
@@ -89,7 +70,6 @@ export default function RewardsPage() {
 
     const reward = rewards.find(r => r.id === rewardId)
     if (reward && balance >= reward.cost && reward.cost > 0) {
-      setIsRedeeming(true)
       try {
         // Ensure balance is sufficient before proceeding
         if (balance < reward.cost) {
@@ -110,8 +90,6 @@ export default function RewardsPage() {
       } catch (error) {
         console.error('Error redeeming reward:', error)
         toast.error('Failed to redeem reward. Please try again.')
-      } finally {
-        setIsRedeeming(false)
       }
     } else {
       toast.error('Insufficient balance or invalid reward cost')
@@ -125,7 +103,6 @@ export default function RewardsPage() {
     }
 
     if (balance > 0) {
-      setIsRedeeming(true)
       try {
         // Update database
         await redeemReward(user.id, 0);
@@ -140,11 +117,27 @@ export default function RewardsPage() {
       } catch (error) {
         console.error('Error redeeming all points:', error);
         toast.error('Failed to redeem all points. Please try again.');
-      } finally {
-        setIsRedeeming(false)
       }
     } else {
       toast.error('No points available to redeem')
+    }
+  }
+
+  const refreshUserData = async () => {
+    if (user) {
+      const fetchedUser = await getUserByEmail(user.email);
+      if (fetchedUser) {
+        const fetchedTransactions = await getRewardTransactions(fetchedUser.id);
+        setTransactions(fetchedTransactions as Transaction[]);
+        const fetchedRewards = await getAvailableRewards(fetchedUser.id);
+        setRewards(fetchedRewards.filter(r => r.cost > 0)); // Filter out rewards with 0 points
+        
+        // Recalculate balance
+        const calculatedBalance = fetchedTransactions.reduce((acc, transaction) => {
+          return transaction.type.startsWith('earned') ? acc + transaction.amount : acc - transaction.amount
+        }, 0)
+        setBalance(Math.max(calculatedBalance, 0)) // Ensure balance is never negative
+      }
     }
   }
 
@@ -219,28 +212,20 @@ export default function RewardsPage() {
                       <Button 
                         onClick={handleRedeemAllPoints}
                         className="w-full bg-green-500 hover:bg-green-600 text-white"
-                        disabled={balance === 0 || isRedeeming}
+                        disabled={balance === 0}
                       >
-                        {isRedeeming ? (
-                          <Loader className="animate-spin h-4 w-4 mr-2" />
-                        ) : (
-                          <Gift className="w-4 h-4 mr-2" />
-                        )}
-                        {isRedeeming ? 'Redeeming...' : 'Redeem All Points'}
+                        <Gift className="w-4 h-4 mr-2" />
+                        Redeem All Points
                       </Button>
                     </div>
                   ) : (
                     <Button 
                       onClick={() => handleRedeemReward(reward.id)}
                       className="w-full bg-green-500 hover:bg-green-600 text-white"
-                      disabled={balance < reward.cost || isRedeeming}
+                      disabled={balance < reward.cost}
                     >
-                      {isRedeeming ? (
-                        <Loader className="animate-spin h-4 w-4 mr-2" />
-                      ) : (
-                        <Gift className="w-4 h-4 mr-2" />
-                      )}
-                      {isRedeeming ? 'Redeeming...' : 'Redeem Reward'}
+                      <Gift className="w-4 h-4 mr-2" />
+                      Redeem Reward
                     </Button>
                   )}
                 </div>
