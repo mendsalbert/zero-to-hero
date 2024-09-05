@@ -71,7 +71,6 @@ export default function RewardsPage() {
     const reward = rewards.find(r => r.id === rewardId)
     if (reward && balance >= reward.cost && reward.cost > 0) {
       try {
-        // Ensure balance is sufficient before proceeding
         if (balance < reward.cost) {
           toast.error('Insufficient balance to redeem this reward')
           return

@@ -8,7 +8,6 @@ import Sidebar from "@/components/Sidebar"
 import 'leaflet/dist/leaflet.css'
 import { Toaster } from 'react-hot-toast'
 import { getAvailableRewards, getUserByEmail } from '@/utils/db/actions'
-import CreateSchemas from "@/components/createSchemas"
 
 const inter = Inter({ subsets: ['latin'] })
 
